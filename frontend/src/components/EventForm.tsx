@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreateEventData } from '../types';
+import { geocodeLocation } from '../utils/geocoding';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -20,6 +21,7 @@ function EventForm() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [gettingLocation, setGettingLocation] = useState<boolean>(false);
+  const [geocoding, setGeocoding] = useState<boolean>(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -57,10 +59,54 @@ function EventForm() {
     );
   };
 
+  const handleGeocodeLocation = async () => {
+    if (!formData.location || formData.location.trim() === '') {
+      setError('Please enter a location first');
+      return;
+    }
+
+    setGeocoding(true);
+    setError(null);
+
+    try {
+      const result = await geocodeLocation(formData.location);
+      
+      if (result) {
+        setFormData((prev) => ({
+          ...prev,
+          latitude: result.latitude,
+          longitude: result.longitude,
+        }));
+        // Optionally update location with more precise name
+        // setFormData(prev => ({ ...prev, location: result.displayName }));
+      } else {
+        setError('Could not find coordinates for this location. Please try a more specific address.');
+      }
+    } catch (err) {
+      setError('Failed to geocode location. Please try again.');
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+
+    // Auto-geocode if location is provided but no coordinates
+    let finalFormData = { ...formData };
+    
+    if (formData.location && !formData.latitude && !formData.longitude) {
+      const result = await geocodeLocation(formData.location);
+      if (result) {
+        finalFormData = {
+          ...formData,
+          latitude: result.latitude,
+          longitude: result.longitude,
+        };
+      }
+    }
 
     try {
       const response = await fetch(`${API_URL}/api/events`, {
@@ -68,7 +114,7 @@ function EventForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(finalFormData),
       });
 
       if (!response.ok) {
@@ -120,13 +166,38 @@ function EventForm() {
             name="location"
             value={formData.location}
             onChange={handleChange}
+            placeholder="e.g., Miami, FL or 123 Main St, New York"
             required
           />
+          <small style={{ color: '#666', display: 'block', marginTop: '5px' }}>
+            💡 Enter any address, city, or landmark - coordinates will be found automatically!
+          </small>
         </div>
 
         <div className="form-group">
-          <label>Event Coordinates (Optional)</label>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <label>Event Coordinates (Auto-detected or Manual)</label>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+            <button
+              type="button"
+              onClick={handleGeocodeLocation}
+              disabled={geocoding || !formData.location}
+              className="btn"
+              style={{ flex: 1 }}
+            >
+              {geocoding ? '🔍 Finding...' : '🗺️ Get Coordinates from Location'}
+            </button>
+            <button
+              type="button"
+              onClick={getCurrentLocation}
+              disabled={gettingLocation}
+              className="btn btn-secondary"
+              style={{ flex: 1 }}
+            >
+              {gettingLocation ? '📍 Getting...' : '📍 Use My Current Location'}
+            </button>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '10px' }}>
             <input
               type="number"
               step="any"
@@ -155,19 +226,11 @@ function EventForm() {
               }
               style={{ flex: 1 }}
             />
-            <button
-              type="button"
-              onClick={getCurrentLocation}
-              disabled={gettingLocation}
-              className="btn btn-secondary"
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              {gettingLocation ? 'Getting...' : 'Use My Location'}
-            </button>
           </div>
+          
           {formData.latitude && formData.longitude && (
-            <small style={{ color: '#666' }}>
-              Location set: {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
+            <small style={{ color: '#28a745', display: 'block', marginTop: '5px' }}>
+              ✓ Coordinates set: {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
             </small>
           )}
         </div>
@@ -202,6 +265,11 @@ function EventForm() {
         <button type="submit" className="btn" disabled={submitting}>
           {submitting ? 'Creating...' : 'Create Event'}
         </button>
+        
+        <p style={{ marginTop: '15px', fontSize: '0.9rem', color: '#666' }}>
+          💡 <strong>Tip:</strong> Coordinates will be automatically detected from your location name when you submit. 
+          You can also click "Get Coordinates from Location" to preview them first.
+        </p>
       </form>
     </div>
   );
