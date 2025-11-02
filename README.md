@@ -59,8 +59,8 @@ Built on top of the geocoding service, the distance calculation module:
 
 ### 🚀 Deployment
 
-- **Frontend (Vercel)**: [https://event-discovery-app-chi.vercel.app/](https://your-app.vercel.app)
-- **Backend (Render)**: [https://event-discovery-app.onrender.com](https://your-api.onrender.com)
+- **Frontend (Vercel)**: https://event-discovery-app-chi.vercel.app/
+- **Backend (Render)**: https://event-discovery-app.onrender.com
 
 ## Installation
 
@@ -214,6 +214,9 @@ DATABASE_URL=<database-connection>
 NODE_ENV=development|production
 ALLOWED_ORIGINS=http://localhost:5173,https://event-discovery-app-chi.vercel.app/
 ```
+
+
+Made this project with Claude.ai
 
 
 
