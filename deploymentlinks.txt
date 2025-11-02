@@ -1,0 +1,2 @@
+Render=https://event-discovery-app.onrender.com
+Vercel=https://event-discovery-app-chi.vercel.app/
